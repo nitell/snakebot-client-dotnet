@@ -25,7 +25,7 @@ namespace Cygni.Snake.SampleBot
             sw.Start();
             try
             {
-                retVal = CalculateMove(map);                
+                retVal = CalculateMove(map);
             }
             catch (Exception e)
             {
@@ -38,8 +38,6 @@ namespace Cygni.Snake.SampleBot
 
         }
 
-
-
         private Direction CalculateMove(Map map)
         {
 
@@ -47,7 +45,7 @@ namespace Cygni.Snake.SampleBot
             pathFinder = new PathFinder(map);
 
             MapCoordinate[] path = null;
-            var t = Task.Run(() => path= FindFoodPath());
+            var t = Task.Run(() => path = FindFoodPath());
             var result = t.Wait(200);
             if (path != null)
             {
@@ -93,53 +91,37 @@ namespace Cygni.Snake.SampleBot
         {
             //Try to find food that I'm closest to
             //If not, choose the food furthest away food, just to stay alive            
-            MapCoordinate[] longestPath = null;
-
             foreach (var f in map.FoodPositions.OrderBy(p => map.MySnake.HeadPosition.GetManhattanDistanceTo(p)))
             {
-                var myPath = pathFinder.FindShortestPath(map.MySnake.HeadPosition, f);
-                if (myPath != null)
-                {
-                    var otherPaths = map.Snakes.Where(s => s.Id != map.MySnake.Id)
-                        .Select(s => pathFinder.FindShortestPath(s.HeadPosition, f))
-                        .Where(p => p != null && p.Any()).ToArray();
-                    var shortestOtherPath = otherPaths.Any() ? otherPaths.Min(p => p.Length) : int.MaxValue;
-                    if (myPath.Length < shortestOtherPath)
-                        return pathFinder.FindShortestPath(map.MySnake.HeadPosition, f, AvoidHeadsAndWalls);
-
-                    var longestSafePath = pathFinder.FindShortestPath(map.MySnake.HeadPosition, f, AvoidHeadsAndWalls);
-
-                    if (longestPath == null || longestSafePath.Length < myPath.Length)
-                        longestPath = longestSafePath;
-                }
+                var myPath = pathFinder.FindShortestPath(map.MySnake.HeadPosition, f, AvoidHeadsAndWalls);
+                return myPath;
             }
 
-            ////Try to go the furthest away corner, just to stay alive
-            //if (longestPath == null)
-            //{
-            //    foreach (var corner in new[]
-            //        {
-            //            new MapCoordinate(0, 0), new MapCoordinate(0, map.Height), new MapCoordinate(map.Width, 0),
-            //            new MapCoordinate(map.Height, map.Width)
-            //        }.OrderByDescending(c => map.MySnake.HeadPosition.GetManhattanDistanceTo(c))
-            //    )
-            //    {
-            //        var path = pathFinder.FindShortestPath(map.MySnake.HeadPosition, corner);
-            //        if (path != null)
-            //            return path;
-            //    }
-            //}
-            return longestPath;
+            //Try to go the some point far away
+            foreach (var corner in new[]
+                {
+
+                        new MapCoordinate(0, 0), new MapCoordinate(0, map.Height-1), new MapCoordinate(map.Width-1, 0),
+                        new MapCoordinate(map.Height-1, map.Width-1)
+                    }.OrderByDescending(c => map.MySnake.HeadPosition.GetManhattanDistanceTo(c))
+            )
+            {
+                var path = pathFinder.FindShortestPath(map.MySnake.HeadPosition, corner);
+                if (path != null)
+                    return path;
+            }
+
+            return null;
         }
 
         private int AvoidHeadsAndWalls(Map map, MapCoordinate target)
         {
             if (map.Snakes.Any(s => s.Id != map.MySnake.Id && s.HeadPosition.GetManhattanDistanceTo(target) < 3))
-                return 2;
+                return 5;
 
             if (target.X == 0 || target.X == map.Width - 1 ||
                 target.Y == 0 || target.Y == map.Height - 1)
-                return 2;
+                return 5;
 
             return 1;
         }
